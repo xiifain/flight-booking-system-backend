@@ -21,6 +21,7 @@ env:
   SENTRY_DSN: ${{ secrets.SENTRY_DSN }}
   TRACE_SAMPLE_RATE: ${{ secrets.TRACE_SAMPLE_RATE }}
   NODE_ENV: ${{ secrets.NODE_ENV }}
+  ENCRYPTION_KEY: ${{ secrets.ENCRYPTION_KEY }}
 
 jobs:
   build_image:
@@ -93,6 +94,7 @@ jobs:
           echo SENTRY_AUTH_TOKEN=$SENTRY_AUTH_TOKEN >> .env
           echo TRACE_SAMPLE_RATE=$TRACE_SAMPLE_RATE >> .env
           echo NODE_ENV=$NODE_ENV >> .env
+          echo ENCRYPTION_KEY=$ENCRYPTION_KEY >> .env
           touch .env.deploy
           echo DOCKER_USER=$DOCKER_USER >> .env.deploy
           echo DOCKER_PASSWORD=$DOCKER_PASSWORD >> .env.deploy
