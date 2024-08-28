@@ -1,0 +1,118 @@
+name: ci
+
+on:
+  push:
+    branches:
+      - 'main'
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+  POSTGRES_HOST: ${{ secrets.POSTGRES_HOST }}
+  POSTGRES_PORT: ${{ secrets.POSTGRES_PORT }}
+  POSTGRES_DB: ${{ secrets.POSTGRES_DB }}
+  POSTGRES_USER: ${{ secrets.POSTGRES_USER }}
+  POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
+  SECRET_KEY: ${{ secrets.SECRET_KEY }}
+  TOKEN_EXPIRES_IN: ${{ secrets.TOKEN_EXPIRES_IN }}
+  REDIS_HOST: ${{ secrets.REDIS_HOST }}
+  REDIS_PORT: ${{ secrets.REDIS_PORT }}
+  GOOGLE_CLIENT_ID: ${{ secrets.GOOGLE_CLIENT_ID }}
+  GOOGLE_CLIENT_SECRET: ${{ secrets.GOOGLE_CLIENT_SECRET }}
+  SENTRY_DSN: ${{ secrets.SENTRY_DSN }}
+  TRACE_SAMPLE_RATE: ${{ secrets.TRACE_SAMPLE_RATE }}
+  NODE_ENV: ${{ secrets.NODE_ENV }}
+
+jobs:
+  build_image:
+    name: Build Image
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
+      - name: Docker Info
+        run: |
+          docker version
+          docker info
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v2
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Build and push
+        uses: docker/build-push-action@v4
+        with:
+          file: Dockerfile.prod
+          platforms: linux/amd64
+          tags: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
+          labels: ${{ steps.meta.outputs.labels }}
+          push: true
+  deploy:
+    name: Deploy
+    runs-on: ubuntu-24.04
+    needs: build_image
+    container: ubuntu:latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v3
+      - name: Deploy in EC2
+        env:
+          PRIVATE_KEY: ${{ secrets.PRIVATE_KEY }}
+          HOSTNAME: ${{ secrets.HOST }}
+          USER_NAME: ${{ secrets.USERNAME }}
+          DOCKER_USER: ${{ github.actor }}
+          DOCKER_PASSWORD: ${{ secrets.GITHUB_TOKEN }}
+          ORG_SLUG: ${{ secrets.ORG_SLUG }}
+          SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
+          REGISTRY_IMAGE: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+        run: |
+          apt update && apt upgrade -y
+          apt-get install openssh-server -y
+          service ssh start
+          eval $(ssh-agent -s)
+          echo "$PRIVATE_KEY" | tr -d '\r' | ssh-add -
+          mkdir -p ~/.ssh
+          chmod 700 ~/.ssh
+          ssh-keyscan $HOSTNAME >> ~/.ssh/known_hosts
+          chmod 644 ~/.ssh/known_hosts
+          echo POSTGRES_HOST=$POSTGRES_HOST >> .env
+          echo POSTGRES_PORT=$POSTGRES_PORT >> .env
+          echo POSTGRES_DB=$POSTGRES_DB >> .env
+          echo POSTGRES_USER=$POSTGRES_USER >> .env
+          echo POSTGRES_PASSWORD=$POSTGRES_PASSWORD >> .env
+          echo SECRET_KEY=$SECRET_KEY >> .env
+          echo TOKEN_EXPIRES_IN=$TOKEN_EXPIRES_IN >> .env
+          echo REDIS_HOST=$REDIS_HOST >> .env
+          echo REDIS_PORT=$REDIS_PORT >> .env
+          echo GOOGLE_CLIENT_ID=$GOOGLE_CLIENT_ID >> .env
+          echo GOOGLE_CLIENT_SECRET=$GOOGLE_CLIENT_SECRET >> .env
+          echo SENTRY_DSN=$SENTRY_DSN >> .env
+          echo SENTRY_AUTH_TOKEN=$SENTRY_AUTH_TOKEN >> .env
+          echo TRACE_SAMPLE_RATE=$TRACE_SAMPLE_RATE >> .env
+          echo NODE_ENV=$NODE_ENV >> .env
+          touch .env.deploy
+          echo DOCKER_USER=$DOCKER_USER >> .env.deploy
+          echo DOCKER_PASSWORD=$DOCKER_PASSWORD >> .env.deploy
+          echo REGISTRY_BASE=$REGISTRY >> .env.deploy
+          echo REGISTRY=$REGISTRY_IMAGE >> .env.deploy
+          echo RELEASE_VER=$GITHUB_SHA >> .env.deploy
+          echo ORG_SLUG=$ORG_SLUG >> .env.deploy
+          echo AUTH_TOKEN=$SENTRY_AUTH_TOKEN >> .env.deploy
+          scp -o StrictHostKeyChecking=no -r ./.env.deploy $USER_NAME@$HOSTNAME:~/
+          scp -o StrictHostKeyChecking=no -r ./.env $USER_NAME@$HOSTNAME:~/
+          scp -o StrictHostKeyChecking=no -r ./scripts $USER_NAME@$HOSTNAME:~/
+          ssh $USER_NAME@$HOSTNAME << 'ENDSSH'
+            cd ~
+            export $(cat .env.deploy | xargs)
+            export $(cat .env | xargs)
+            mv ./scripts/docker/compose.yml ~/
+            docker login -u $DOCKER_USER -p $DOCKER_PASSWORD $REGISTRY_BASE
+            docker image pull $REGISTRY:latest
+            docker compose down
+            docker compose up -d
+            docker logout
+            docker image prune -f
+          ENDSSH
