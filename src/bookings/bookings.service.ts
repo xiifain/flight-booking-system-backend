@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Logger, Injectable } from '@nestjs/common';
 import { User } from 'src/auth/user.entity';
 import { CreateBookingDto } from './booking.dtos';
 import { InjectRepository } from '@nestjs/typeorm';
@@ -9,6 +9,8 @@ import { generateRandomString } from 'src/utils/random-string-generator';
 
 @Injectable()
 export class BookingsService {
+  private readonly logger = new Logger(BookingsService.name);
+
   constructor(
     @InjectRepository(Booking)
     private readonly bookingRepository: Repository<Booking>,
@@ -17,7 +19,7 @@ export class BookingsService {
   async create(user: User, dto: CreateBookingDto) {
     const code = generateRandomString(6);
 
-    return this.bookingRepository.save({
+    const data = await this.bookingRepository.save({
       ...dto,
       code,
       departingFlights: dto.departingFlights.map(id => ({ id }) as Flight),
@@ -25,6 +27,10 @@ export class BookingsService {
       payment: { id: dto.paymentMethodId },
       profile: user.profile,
     });
+
+    this.logger.log(`${user.profile.id} created a booking with booking number - ${code}`);
+
+    return data;
   }
 
   async findAll(user: User): Promise<Booking[]> {
