@@ -1,4 +1,5 @@
 import { Profile } from 'src/auth/profile.entity';
+import { FlightInstance } from 'src/flights/flight-instance.entity';
 import { Flight } from 'src/flights/flight.entity';
 import { Payment } from 'src/payments/payment.entity';
 import {
@@ -20,21 +21,21 @@ export class Booking extends BaseEntity {
   @Column({ type: 'varchar', length: 6, nullable: false })
   code: string;
 
-  @ManyToMany(() => Flight, flight => flight.id)
+  @ManyToMany(() => FlightInstance, flight => flight.id)
   @JoinTable({
-    name: 'bookings_departing_flights',
+    name: 'bookings_departing_flight_instances',
     joinColumn: { name: 'booking_id', referencedColumnName: 'id' },
-    inverseJoinColumn: { name: 'flight_id', referencedColumnName: 'id' },
+    inverseJoinColumn: { name: 'flight_instance_id', referencedColumnName: 'id' },
   })
-  departingFlights: Flight[];
+  departingFlights: FlightInstance[];
 
-  @ManyToMany(() => Flight, flight => flight.id)
+  @ManyToMany(() => FlightInstance, flight => flight.id)
   @JoinTable({
-    name: 'bookings_returning_flights',
+    name: 'bookings_returning_flight_instances',
     joinColumn: { name: 'booking_id', referencedColumnName: 'id' },
-    inverseJoinColumn: { name: 'flight_id', referencedColumnName: 'id' },
+    inverseJoinColumn: { name: 'flight_instance_id', referencedColumnName: 'id' },
   })
-  returningFlights: Flight[];
+  returningFlights: FlightInstance[];
 
   @ManyToOne(() => Payment, payment => payment.id)
   @JoinColumn({ name: 'payment_id' })

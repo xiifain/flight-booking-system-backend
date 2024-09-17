@@ -2,7 +2,17 @@ import { Airline } from 'src/airlines/airline.entity';
 import { Airplane } from 'src/airplanes/airplane.entity';
 import { Airport } from 'src/airports/airport.entity';
 import { NumericTransformer } from 'src/utils/column-numeric-transformer';
-import { BaseEntity, Column, Entity, JoinColumn, ManyToOne, PrimaryGeneratedColumn } from 'typeorm';
+import {
+  BaseEntity,
+  Column,
+  Entity,
+  JoinColumn,
+  ManyToOne,
+  OneToMany,
+  PrimaryGeneratedColumn,
+} from 'typeorm';
+import { Route } from './route.entity';
+import { FlightInstance } from './flight-instance.entity';
 
 @Entity('flights')
 export class Flight extends BaseEntity {
@@ -27,23 +37,17 @@ export class Flight extends BaseEntity {
   @JoinColumn({ name: 'departure_airport_id' })
   departureAirport: Airport;
 
-  @Column({ name: 'departure_time', type: 'time', nullable: false })
-  departureTime: string;
-
   @ManyToOne(() => Airport, airport => airport.destinations)
   @JoinColumn({ name: 'destination_airport_id' })
   destinationAirport: Airport;
 
-  @Column({ name: 'arrival_time', type: 'time', nullable: false })
-  arrivalTime: string;
+  @ManyToOne(() => Route, route => route.flights)
+  @JoinColumn({ name: 'route_id' })
+  route: Route;
 
-  @Column({
-    type: 'decimal',
-    precision: 10,
-    scale: 2,
-    nullable: false,
-    default: 0.0,
-    transformer: new NumericTransformer(),
-  })
-  price: number;
+  @Column({ name: 'operating_days', type: 'varchar', length: 255, nullable: true })
+  operatingDays?: string;
+
+  @OneToMany(() => FlightInstance, flightInstance => flightInstance.flight)
+  flightInstances: FlightInstance[];
 }

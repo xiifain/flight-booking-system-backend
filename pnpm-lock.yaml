@@ -137,6 +137,9 @@ importers:
       typeorm-encrypted:
         specifier: ^0.8.0
         version: 0.8.0(typeorm@0.3.20(ioredis@5.4.1)(pg@8.12.0)(redis@4.7.0)(ts-node@10.9.2(@types/node@22.4.1)(typescript@5.5.4)))
+      uuid:
+        specifier: ^10.0.0
+        version: 10.0.0
     devDependencies:
       '@faker-js/faker':
         specifier: 8.4.1

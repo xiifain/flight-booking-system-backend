@@ -1,12 +1,13 @@
 import { Module } from '@nestjs/common';
-import { FlightsService } from './flights.service';
 import { FlightsController } from './flights.controller';
 import { TypeOrmModule } from '@nestjs/typeorm';
-import { Flight } from './flight.entity';
+import { FlightSearchService } from './flights.service';
+import { FlightInstance } from './flight-instance.entity';
+import { Airport } from 'src/airports/airport.entity';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Flight])],
+  imports: [TypeOrmModule.forFeature([FlightInstance, Airport])],
   controllers: [FlightsController],
-  providers: [FlightsService],
+  providers: [FlightSearchService],
 })
 export class FlightsModule {}

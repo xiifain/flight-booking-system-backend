@@ -1,5 +1,6 @@
 import { City } from 'src/cities/city.entity';
 import { Flight } from 'src/flights/flight.entity';
+import { Route } from 'src/flights/route.entity';
 import {
   BaseEntity,
   Column,
@@ -30,4 +31,10 @@ export class Airport extends BaseEntity {
 
   @OneToMany(() => Flight, flight => flight.destinationAirport)
   destinations: Flight[];
+
+  @OneToMany(() => Route, route => route.originAirport)
+  originRoutes: Route[];
+
+  @OneToMany(() => Route, route => route.destinationAirport)
+  destinationRoutes: Route[];
 }
